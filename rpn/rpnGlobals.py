@@ -135,6 +135,7 @@ functionCaches = { }
 # prime number data
 databases = { }
 cursors = { }
+primeDataAvailable = False
 
 # chemistry tables
 elements = None
@@ -152,4 +153,10 @@ userConfigurationIsDirty = False
 planets = None
 ephemeris = None
 timescale = None
+
+# constants
+c = None
+e0 = None
+h_bar = None
+G = None
 
