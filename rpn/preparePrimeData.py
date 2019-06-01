@@ -77,7 +77,6 @@ def main( ):
     preparePrimeData( "sexy_triplets" )
     preparePrimeData( "small_primes" )
     preparePrimeData( "sophie_primes" )
-    preparePrimeData( "super_primes" )
     preparePrimeData( "triplet_primes" )
     preparePrimeData( "triple_balanced_primes" )
     preparePrimeData( "twin_primes" )
