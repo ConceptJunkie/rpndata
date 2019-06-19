@@ -4,21 +4,13 @@
 # //
 # //  rpnPersistence.py
 # //
-# //  RPN command-line calculator factoring utilities
+# //  rpnChilada persistence functions
 # //  copyright (c) 2019, Rick Gutleber (rickg@his.com)
 # //
 # //  License: GNU GPL 3.0 (see <http://www.gnu.org/licenses/gpl.html> for more
 # //  information).
 # //
 # //******************************************************************************
-
-import six
-
-if six.PY3:
-    from functools import lru_cache
-else:
-    from pylru import lrudecorator as lru_cache
-    FileNotFoundError = IOError
 
 import bz2
 import configparser
@@ -29,13 +21,14 @@ import pickle
 import sqlite3
 import types
 
+from functools import lru_cache
 from mpmath import autoprec, mp, mpf, mpmathify, nstr
 
 from rpn.rpnDebug import debugPrint
 from rpn.rpnGenerator import RPNGenerator
 from rpn.rpnKeyboard import DelayedKeyboardInterrupt
 from rpn.rpnSettings import setPrecision
-from rpn.rpnUtils import getDataPath, getUserDataPath
+from rpn.rpnUtils import getUserDataPath, oneArgFunctionEvaluator
 from rpn.rpnVersion import PROGRAM_VERSION, PROGRAM_NAME
 
 import rpn.rpnGlobals as g
@@ -60,11 +53,11 @@ def loadFactorCache( ):
 
 def loadUnitNameData( ):
     try:
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'unit_names.pckl.bz2', 'rb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'unit_names.pckl.bz2', 'rb' ) ) as pickleFile:
             unitsVersion = pickle.load( pickleFile )
             g.unitOperatorNames = pickle.load( pickleFile )
             g.constantOperatorNames = pickle.load( pickleFile )
-            g.operatorAliases.update( pickle.load( pickleFile ) )
+            g.aliases.update( pickle.load( pickleFile ) )
     except IOError:
         print( 'rpn:  Unable to load unit names.  Run "makeUnits" to generate the unit data files.' )
         return False
@@ -83,7 +76,7 @@ def loadUnitNameData( ):
 
 def loadUnitConversionMatrix( ):
     try:
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'unit_conversions.pckl.bz2', 'rb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'unit_conversions.pckl.bz2', 'rb' ) ) as pickleFile:
             g.unitConversionMatrix.update( pickle.load( pickleFile ) )
     except FileNotFoundError:
         print( 'rpn:  Unable to load unit conversion data.  Run "makeUnits" to generate the unit data files.' )
@@ -97,7 +90,7 @@ def loadUnitConversionMatrix( ):
 
 def loadUnitData( ):
     try:
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'units.pckl.bz2', 'rb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'units.pckl.bz2', 'rb' ) ) as pickleFile:
             unitsVersion = pickle.load( pickleFile )
             g.basicUnitTypes.update( pickle.load( pickleFile ) )
             g.unitOperators.update( pickle.load( pickleFile ) )
@@ -124,7 +117,7 @@ def loadHelpData( ):
         return
 
     try:
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'help.pckl.bz2', 'rb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'help.pckl.bz2', 'rb' ) ) as pickleFile:
             g.helpVersion = pickle.load( pickleFile )
             g.helpTopics = pickle.load( pickleFile )
             g.operatorHelp = pickle.load( pickleFile )
@@ -132,7 +125,7 @@ def loadHelpData( ):
         raise ValueError( 'rpn:  Unable to load help.  Run "makeHelp" to generate the help data files.' )
 
     try:
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'unit_help.pckl.bz2', 'rb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'unit_help.pckl.bz2', 'rb' ) ) as pickleFile:
             g.unitTypeDict = pickle.load( pickleFile )
     except FileNotFoundError:
         raise ValueError( 'rpn:  Unable to load unit help data.  Run "makeHelp" to generate the help data files.' )
@@ -188,7 +181,7 @@ def saveResult( result ):
 
 def loadConstants( ):
     try:
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'constants.pckl.bz2', 'rb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'constants.pckl.bz2', 'rb' ) ) as pickleFile:
             constants = pickle.load( pickleFile )
     except FileNotFoundError:
         constants = { }
@@ -204,7 +197,7 @@ def loadConstants( ):
 
 def saveConstants( constants ):
     with DelayedKeyboardInterrupt( ):
-        with contextlib.closing( bz2.BZ2File( getDataPath( ) + os.sep + 'constants.pckl.bz2', 'wb' ) ) as pickleFile:
+        with contextlib.closing( bz2.BZ2File( getUserDataPath( ) + os.sep + 'constants.pckl.bz2', 'wb' ) ) as pickleFile:
             pickle.dump( constants, pickleFile )
 
 
@@ -227,7 +220,7 @@ def getCacheFileName( name ):
 
 @lru_cache( 10 )
 def getPrimeCacheFileName( name ):
-    return getDataPath( ) + os.sep + name + '.cache'
+    return getUserDataPath( ) + os.sep + name + '.cache'
 
 
 # //******************************************************************************
@@ -295,6 +288,31 @@ def openPrimeCache( name ):
             g.cursors[ name ] = g.databases[ name ].cursor( )
         except:
             raise ValueError( 'prime number table ' + name + ' can\'t be found.  Run "preparePrimeData" to create the prime data.' )
+
+
+# //******************************************************************************
+# //
+# //  dumpPrimeCache
+# //
+# //******************************************************************************
+
+@oneArgFunctionEvaluator( )
+def dumpPrimeCache( name ):
+    if name not in g.cursors:
+        if not doesCacheExist( name ):
+            raise ValueError( 'cache \'' + name + '\' does not exist.' )
+
+        openPrimeCache( name )
+
+    rows = g.cursors[ name ].execute(
+            '''SELECT id, value FROM cache ORDER BY id''' ).fetchall( )
+
+    rows.sort( key=lambda x: x[ 0 ] )
+
+    for row in rows:
+        print( '{:13} {}'.format( row[ 0 ], row[ 1 ] ) )
+
+    return len( rows )
 
 
 # //******************************************************************************
@@ -492,7 +510,31 @@ def deleteFromFunctionCache( name, key ):
 
 # //******************************************************************************
 # //
+# //  dumpFunctionCache
+# //
+# //******************************************************************************
+
+@oneArgFunctionEvaluator( )
+def dumpFunctionCache( name ):
+    if not doesCacheExist( name ):
+        raise ValueError( 'cache \'' + name + '\' does not exist.' )
+
+    cache = openFunctionCache( name )
+
+    keys = sorted( cache.keys( ) )
+
+    for key in keys:
+        print( key, cache[ key ] )
+
+    return len( cache )
+
+
+# //******************************************************************************
+# //
 # //  cachedFunction
+# //
+# //  This is a decorator for any function that wishes to cache its calculations
+# //  to disk.
 # //
 # //******************************************************************************
 
@@ -506,6 +548,45 @@ def cachedFunction( name, overrideIgnore=False ):
             if not g.ignoreCache or overrideIgnore:
                 if ( args, kwargs ) in cache:
                     return cache[ ( args, kwargs ) ]
+
+            result = func( *args, **kwargs )
+
+            if isinstance( result, RPNGenerator ):
+                result = list( result )
+
+            if not g.ignoreCache or overrideIgnore:
+                cache[ ( args, kwargs ) ] = result
+
+            return result
+
+        return cacheResults
+
+    return namedCachedFunction
+
+
+# //******************************************************************************
+# //
+# //  cachedOEISFunction
+# //
+# //  This is a modified version of cachedFunction( ) that will ignore (and
+# //  overwrite) the cached result if it equals 0.  This prevents a failed
+# //  HTTP connection from polluting the OEIS cache with invalid data.
+# //
+# //******************************************************************************
+
+def cachedOEISFunction( name, overrideIgnore=False ):
+    def namedCachedFunction( func ):
+        @functools.wraps( func )
+
+        def cacheResults( *args, **kwargs ):
+            cache = openFunctionCache( name )
+
+            if not g.ignoreCache or overrideIgnore:
+                if ( args, kwargs ) in cache:
+                    result = cache[ ( args, kwargs ) ]
+
+                    if result != 0:
+                        return result
 
             result = func( *args, **kwargs )
 
@@ -560,4 +641,5 @@ def saveUserConfigurationFile( ):
 
     with open( getUserConfigurationFileName( ), 'w' ) as userConfigurationFile:
         config.write( userConfigurationFile )
+
 

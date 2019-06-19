@@ -4,7 +4,7 @@
 # //
 # //  rpnUtils.py
 # //
-# //  RPN command-line calculator utility functions
+# //  rpnChilada utility functions
 # //  copyright (c) 2019, Rick Gutleber (rickg@his.com)
 # //
 # //  License: GNU GPL 3.0 (see <http://www.gnu.org/licenses/gpl.html> for more
@@ -12,18 +12,17 @@
 # //
 # //******************************************************************************
 
-from __future__ import print_function
-
 import functools
 import itertools
 import os
 import sys
 
 from functools import lru_cache, reduce
-from mpmath import arange, fadd, floor, im, log10, mpmathify, nint, nstr
+from mpmath import arange, fadd, floor, im, log10, mag, mp, mpmathify, nint, \
+                   nstr, workdps
 
-from rpn.rpnGenerator import RPNGenerator
 from rpn.rpnDebug import debugPrint
+from rpn.rpnGenerator import RPNGenerator
 
 import rpn.rpnGlobals as g
 
@@ -114,10 +113,10 @@ def removeUnderscores( source ):
 # //
 # //******************************************************************************
 
-def addAliases( operatorList, operatorAliases ):
+def addAliases( operatorList, aliases ):
     '''Adds the predefined aliases from the operator table into the global alias list.'''
     for index, operator in enumerate( operatorList ):
-        aliasList = [ key for key in operatorAliases if operator == operatorAliases[ key ] ]
+        aliasList = [ key for key in aliases if operator == aliases[ key ] ]
 
         if operator in g.unitOperators:
             unitInfo = g.unitOperators[ operator ]
@@ -399,12 +398,10 @@ def listArgFunctionEvaluator( ):
         @functools.wraps( func )
 
         def evaluateList( arg ):
-            args = list( arg )
-
-            if isinstance( args[ 0 ], ( list, RPNGenerator ) ):
-                result = [ evaluateList( i ) for i in args ]
+            if isinstance( arg, ( list, RPNGenerator ) ):
+                result = func( arg )
             else:
-                result = func( args )
+                result = func( [ arg ] )
 
             return result
 
@@ -716,13 +713,19 @@ def loadAstronomyData( ):
     if g.astroDataLoaded:
         return
 
-    from skyfield.api import Loader
-    load = Loader( getUserDataPath( ) )
+    try:
+        from skyfield.api import Loader
+        load = Loader( getUserDataPath( ) )
 
-    from skyfield.api import load_file
-    from skyfield import api
+        from skyfield.api import load_file
+        from skyfield import api
 
-    g.timescale = load.timescale( )
+        g.timescale = load.timescale( )
+    except:
+        print( "Downloading the astronomy data failed.  Some astronomical functions will not be available.", file=sys.stderr )
+        g.astroDataLoaded = True
+        g.astroDataAvailable = False
+        return
 
     try:
         g.planets = load( 'de405.bsp' )
@@ -800,5 +803,19 @@ def getPowerset( list ):
 def flattenList( list ):
     # standard python list flattening recipe
     return [ item for sublist in list for item in sublist ]
+
+
+# //******************************************************************************
+# //
+# //  setAccuracyForN
+# //
+# //******************************************************************************
+
+def setAccuracyForN( n ):
+    magnitude = mag( n )
+
+    if mp.prec < magnitude:
+        mp.prec = magnitude
+
 
 

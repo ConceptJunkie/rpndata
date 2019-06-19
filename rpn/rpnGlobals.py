@@ -4,7 +4,7 @@
 # //
 # //  rpnGlobals.py
 # //
-# //  RPN command-line calculator global declarations
+# //  rpnChilada global declarations
 # //  copyright (c) 2019, Rick Gutleber (rickg@his.com)
 # //
 # //  License: GNU GPL 3.0 (see <http://www.gnu.org/licenses/gpl.html> for more
@@ -14,7 +14,6 @@
 
 # general globals
 dataDir = 'rpndata'
-ecm = True
 
 # base identifiers
 phiBase = -1
@@ -49,9 +48,10 @@ defaultPrecision = 20
 defaultNumerals = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 # state variables
-astroDataLoaded = False
-astroDataAvailable = False
-creatingFunction = False
+astroDataLoaded = False         # Whether or not we've tried to load the astronomy data
+astroDataAvailable = False      # If the astronomy data is available (i.e., It's there, _and_ we loaded it.)
+checkForSingleResults = False   # This is set true for making help and unit tests, because those should always return single results
+creatingFunction = False        # Whether we're in the process of creating a user-defined function
 duplicateOperations = 0
 echoArguments = [ ]
 helpLoaded = False
@@ -59,9 +59,10 @@ interactive = False
 lastOperand = 0
 nestedListLevel = 0
 operandsToRemove = 0
-operatorList = False
+operatorList = False            # whether we are in the process of creating an operator list (between '(' and ')' operators)
 operatorsInList = 0
 startTime = 0
+testFilter = ''
 useMembers = 0
 
 # options
@@ -89,17 +90,21 @@ tempIdentifyMode = False
 tempLeadingZeroMode = False
 tempOctalMode = False
 tempTimerMode = False
+timeIndividualTests = False
 timeLimit = 0
 timer = False
 useYAFU = True
 verbose = False
 zhangConjecturesAllowed = False
 
+# internal constants
+unitConversionPrecision = 50
+
 # unit data
 basicUnitTypes = { }
 constantOperators = { }
 constantOperatorNames = [ ]
-operatorAliases = { }
+aliases = { }
 unitConversionMatrix = { }
 unitOperators = { }
 unitOperatorNames = [ ]
@@ -156,7 +161,10 @@ timescale = None
 
 # constants
 c = None
+e = None
 e0 = None
-h_bar = None
 G = None
+h = None
+h_bar = None
+k = None
 
