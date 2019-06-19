@@ -4,6 +4,7 @@ include rpn\rpndata\double_balanced_primes.cache
 include rpn\rpndata\huge_primes.cache
 include rpn\rpndata\isolated_primes.cache
 include rpn\rpndata\large_primes.cache
+include rpn\rpndata\octy_primes.cache
 include rpn\rpndata\quadruple_balanced_primes.cache
 include rpn\rpndata\quad_primes.cache
 include rpn\rpndata\quint_primes.cache
