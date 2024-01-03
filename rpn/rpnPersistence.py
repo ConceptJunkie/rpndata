@@ -323,7 +323,7 @@ def dumpPrimeCache( name ):
 # //
 # //******************************************************************************
 
-from collections import MutableMapping
+from collections.abc import MutableMapping
 
 class PersistentDict( MutableMapping ):
     def __init__( self, dbpath, iterable=None, **kwargs ):
